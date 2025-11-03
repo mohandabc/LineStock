@@ -238,7 +238,9 @@ export async function initializeKitchenInterface() {
   const deliveryBadge = document.getElementById("deliveryBadge");
 
   let currentLine = "main";
-  let ingredientStatuses = {}; // Store current statuses for sorting
+  let mainStatuses = {}; // Store main line statuses
+  let deliveryStatuses = {}; // Store delivery line statuses
+  let activeListeners = []; // Track active Firebase listeners to clean them up
 
   // Status priority for sorting (lower number = higher priority)
   const STATUS_PRIORITY = {
@@ -248,9 +250,16 @@ export async function initializeKitchenInterface() {
     normal: 3,
   };
 
+  // Get current line's status object
+  function getCurrentStatuses() {
+    return currentLine === "main" ? mainStatuses : deliveryStatuses;
+  }
+
   // Create ingredient cards in sorted order
   function createCards() {
     grid.innerHTML = "";
+
+    const ingredientStatuses = getCurrentStatuses();
 
     // Sort ingredients by status priority
     const sortedIngredients = [...INGREDIENTS].sort((a, b) => {
@@ -297,6 +306,13 @@ export async function initializeKitchenInterface() {
     currentLine = line;
     mainTab.classList.toggle("active", line === "main");
     deliveryTab.classList.toggle("active", line === "delivery");
+
+    // Clean up old listeners before switching
+    activeListeners.forEach((unsubscribe) => unsubscribe());
+    activeListeners = [];
+
+    // Recreate cards and set up new listeners for the selected line
+    createCards();
     updateCards();
   }
 
@@ -305,21 +321,29 @@ export async function initializeKitchenInterface() {
 
   // Update cards based on current line
   function updateCards() {
+    const ingredientStatuses = getCurrentStatuses();
+
     INGREDIENTS.forEach((ingredient) => {
       const ingredientRef = ref(database, `lines/${currentLine}/${ingredient}`);
-      onValue(ingredientRef, (snapshot) => {
+
+      // Store the unsubscribe function so we can clean up later
+      const unsubscribe = onValue(ingredientRef, (snapshot) => {
         const data = snapshot.val();
         const status = data?.status || "normal";
 
-        // Store current status for sorting
+        // Store current status for sorting in the correct line object
         const oldStatus = ingredientStatuses[ingredient];
         ingredientStatuses[ingredient] = status;
 
         // If status changed and affects sort order, recreate cards
-        if (oldStatus !== status) {
+        if (oldStatus !== status && oldStatus !== undefined) {
+          // Clean up old listeners before recreating
+          activeListeners.forEach((unsub) => unsub());
+          activeListeners = [];
+
           createCards();
-          // Re-apply current line listeners after recreation
-          updateCardStyles();
+          updateCards(); // Re-establish listeners
+          return;
         }
 
         const card = grid.querySelector(`[data-ingredient="${ingredient}"]`);
@@ -342,61 +366,35 @@ export async function initializeKitchenInterface() {
           text.textContent = STATUS_LABELS[status];
         }
       });
-    });
-  }
 
-  // Update card styles without recreating (for initial load)
-  function updateCardStyles() {
-    INGREDIENTS.forEach((ingredient) => {
-      const ingredientRef = ref(database, `lines/${currentLine}/${ingredient}`);
-      onValue(ingredientRef, (snapshot) => {
-        const data = snapshot.val();
-        const card = grid.querySelector(`[data-ingredient="${ingredient}"]`);
-
-        if (card && data) {
-          const dot = card.querySelector(".status-dot");
-          const text = card.querySelector(".status-text");
-          const status = data.status || "normal";
-
-          // Update card styling
-          card.className = "ingredient-card";
-          card.classList.add(`status-${status}`);
-
-          // Update dot color
-          dot.className = "status-dot";
-          if (status !== "normal") {
-            dot.classList.add(status);
-          }
-
-          // Update text
-          text.textContent = STATUS_LABELS[status];
-        }
-      });
+      activeListeners.push(unsubscribe);
     });
   }
 
   updateCards();
 
   // Check for alerts on the other line (for badges)
-  function checkOtherLineAlerts(otherLine, badgeElement) {
-    const lineRef = ref(database, `lines/${otherLine}`);
+  function checkOtherLineAlerts(line, badgeElement, isMainLine) {
+    const lineRef = ref(database, `lines/${line}`);
     onValue(lineRef, (snapshot) => {
       const data = snapshot.val();
       let hasAlert = false;
 
       if (data) {
-        Object.values(data).forEach((ingredient) => {
-          if (ingredient.status === "low" || ingredient.status === "empty") {
+        // Update the status cache for this line
+        const statusCache = isMainLine ? mainStatuses : deliveryStatuses;
+        Object.entries(data).forEach(([ingredient, value]) => {
+          statusCache[ingredient] = value.status;
+          if (value.status === "low" || value.status === "empty") {
             hasAlert = true;
           }
         });
       }
 
-      if (hasAlert) {
+      // Only show badge if we're NOT currently viewing this line
+      if (hasAlert && currentLine !== line) {
         badgeElement.classList.add("show");
-        if (otherLine !== currentLine) {
-          playAlert();
-        }
+        playAlert();
       } else {
         badgeElement.classList.remove("show");
       }
@@ -404,15 +402,31 @@ export async function initializeKitchenInterface() {
   }
 
   // Monitor both lines for cross-tab notifications
-  checkOtherLineAlerts("main", deliveryBadge);
-  checkOtherLineAlerts("delivery", mainBadge);
+  // Main line data updates delivery badge
+  checkOtherLineAlerts("main", deliveryBadge, true);
+  // Delivery line data updates main badge
+  checkOtherLineAlerts("delivery", mainBadge, false);
 
   // Update badges when switching tabs
   mainTab.addEventListener("click", () => {
     mainBadge.classList.remove("show");
+    // Check if delivery has alerts to show delivery badge
+    const hasDeliveryAlert = Object.values(deliveryStatuses).some(
+      (status) => status === "low" || status === "empty"
+    );
+    if (hasDeliveryAlert) {
+      deliveryBadge.classList.add("show");
+    }
   });
 
   deliveryTab.addEventListener("click", () => {
     deliveryBadge.classList.remove("show");
+    // Check if main has alerts to show main badge
+    const hasMainAlert = Object.values(mainStatuses).some(
+      (status) => status === "low" || status === "empty"
+    );
+    if (hasMainAlert) {
+      mainBadge.classList.add("show");
+    }
   });
 }
