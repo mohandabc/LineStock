@@ -238,11 +238,28 @@ export async function initializeKitchenInterface() {
   const deliveryBadge = document.getElementById("deliveryBadge");
 
   let currentLine = "main";
+  let ingredientStatuses = {}; // Store current statuses for sorting
 
-  // Create ingredient cards
+  // Status priority for sorting (lower number = higher priority)
+  const STATUS_PRIORITY = {
+    empty: 0,
+    low: 1,
+    half: 2,
+    normal: 3,
+  };
+
+  // Create ingredient cards in sorted order
   function createCards() {
     grid.innerHTML = "";
-    INGREDIENTS.forEach((ingredient) => {
+
+    // Sort ingredients by status priority
+    const sortedIngredients = [...INGREDIENTS].sort((a, b) => {
+      const statusA = ingredientStatuses[a] || "normal";
+      const statusB = ingredientStatuses[b] || "normal";
+      return STATUS_PRIORITY[statusA] - STATUS_PRIORITY[statusB];
+    });
+
+    sortedIngredients.forEach((ingredient) => {
       const card = document.createElement("div");
       card.className = "ingredient-card";
       card.dataset.ingredient = ingredient;
@@ -288,6 +305,48 @@ export async function initializeKitchenInterface() {
 
   // Update cards based on current line
   function updateCards() {
+    INGREDIENTS.forEach((ingredient) => {
+      const ingredientRef = ref(database, `lines/${currentLine}/${ingredient}`);
+      onValue(ingredientRef, (snapshot) => {
+        const data = snapshot.val();
+        const status = data?.status || "normal";
+
+        // Store current status for sorting
+        const oldStatus = ingredientStatuses[ingredient];
+        ingredientStatuses[ingredient] = status;
+
+        // If status changed and affects sort order, recreate cards
+        if (oldStatus !== status) {
+          createCards();
+          // Re-apply current line listeners after recreation
+          updateCardStyles();
+        }
+
+        const card = grid.querySelector(`[data-ingredient="${ingredient}"]`);
+
+        if (card && data) {
+          const dot = card.querySelector(".status-dot");
+          const text = card.querySelector(".status-text");
+
+          // Update card styling
+          card.className = "ingredient-card";
+          card.classList.add(`status-${status}`);
+
+          // Update dot color
+          dot.className = "status-dot";
+          if (status !== "normal") {
+            dot.classList.add(status);
+          }
+
+          // Update text
+          text.textContent = STATUS_LABELS[status];
+        }
+      });
+    });
+  }
+
+  // Update card styles without recreating (for initial load)
+  function updateCardStyles() {
     INGREDIENTS.forEach((ingredient) => {
       const ingredientRef = ref(database, `lines/${currentLine}/${ingredient}`);
       onValue(ingredientRef, (snapshot) => {
