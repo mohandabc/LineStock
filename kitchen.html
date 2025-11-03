@@ -1,0 +1,44 @@
+<!DOCTYPE html>
+<html lang="en">
+
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Kitchen Dashboard</title>
+    <link rel="stylesheet" href="styles.css">
+</head>
+
+<body>
+    <div class="container">
+        <header class="kitchen-header">
+            <a href="index.html" class="back-btn">← Back</a>
+            <h1>Kitchen Dashboard</h1>
+            <div class="spacer"></div>
+        </header>
+
+        <div class="tabs">
+            <button class="tab active" data-line="main" id="mainTab">
+                Main Line
+                <span class="badge" id="mainBadge"></span>
+            </button>
+            <button class="tab" data-line="delivery" id="deliveryTab">
+                Delivery Line
+                <span class="badge" id="deliveryBadge"></span>
+            </button>
+        </div>
+
+        <div class="ingredients-grid kitchen-grid" id="ingredientsGrid">
+            <!-- Ingredients will be dynamically generated -->
+        </div>
+
+        <!-- Toast Notification -->
+        <div id="toast" class="toast"></div>
+    </div>
+
+    <script type="module">
+        import { initializeKitchenInterface } from './app.js';
+        initializeKitchenInterface();
+    </script>
+</body>
+
+</html>

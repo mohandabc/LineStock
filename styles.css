@@ -1,0 +1,438 @@
+/* Reset and Base Styles */
+* {
+    margin: 0;
+    padding: 0;
+    box-sizing: border-box;
+}
+
+body {
+    font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, Oxygen, Ubuntu, Cantarell, sans-serif;
+    background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+    min-height: 100vh;
+    padding: 16px;
+    color: #333;
+}
+
+.container {
+    max-width: 600px;
+    margin: 0 auto;
+}
+
+/* Role Selection Page */
+.role-selection {
+    background: white;
+    border-radius: 20px;
+    padding: 40px 24px;
+    text-align: center;
+    box-shadow: 0 10px 40px rgba(0, 0, 0, 0.2);
+}
+
+.role-selection h1 {
+    font-size: 28px;
+    margin-bottom: 12px;
+    color: #2d3748;
+}
+
+.role-selection p {
+    color: #718096;
+    margin-bottom: 32px;
+    font-size: 16px;
+}
+
+.role-buttons {
+    display: flex;
+    flex-direction: column;
+    gap: 16px;
+}
+
+.role-btn {
+    display: flex;
+    align-items: center;
+    gap: 16px;
+    padding: 20px 24px;
+    background: #f7fafc;
+    border: 2px solid #e2e8f0;
+    border-radius: 12px;
+    text-decoration: none;
+    color: #2d3748;
+    transition: all 0.2s;
+    font-size: 18px;
+    font-weight: 600;
+}
+
+.role-btn:active {
+    transform: scale(0.98);
+    background: #edf2f7;
+}
+
+.role-icon {
+    font-size: 32px;
+}
+
+.role-title {
+    flex: 1;
+    text-align: left;
+}
+
+/* Headers */
+.line-header, .kitchen-header {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    background: white;
+    padding: 16px 20px;
+    border-radius: 16px 16px 0 0;
+    box-shadow: 0 2px 8px rgba(0, 0, 0, 0.1);
+    margin-bottom: 2px;
+}
+
+.line-header h1, .kitchen-header h1 {
+    font-size: 22px;
+    color: #2d3748;
+    flex: 1;
+    text-align: center;
+}
+
+.back-btn {
+    color: #667eea;
+    text-decoration: none;
+    font-size: 16px;
+    font-weight: 600;
+    padding: 8px 12px;
+    border-radius: 8px;
+    transition: background 0.2s;
+}
+
+.back-btn:active {
+    background: #f7fafc;
+}
+
+.spacer {
+    width: 60px;
+}
+
+/* Tabs (Kitchen) */
+.tabs {
+    display: flex;
+    background: white;
+    padding: 0 8px;
+    gap: 8px;
+}
+
+.tab {
+    flex: 1;
+    padding: 16px;
+    background: transparent;
+    border: none;
+    border-bottom: 3px solid transparent;
+    font-size: 16px;
+    font-weight: 600;
+    color: #718096;
+    cursor: pointer;
+    transition: all 0.2s;
+    position: relative;
+}
+
+.tab.active {
+    color: #667eea;
+    border-bottom-color: #667eea;
+}
+
+.badge {
+    display: none;
+    position: absolute;
+    top: 8px;
+    right: 8px;
+    width: 10px;
+    height: 10px;
+    background: #f56565;
+    border-radius: 50%;
+    animation: pulse 2s infinite;
+}
+
+.badge.show {
+    display: block;
+}
+
+@keyframes pulse {
+    0%, 100% { opacity: 1; }
+    50% { opacity: 0.5; }
+}
+
+/* Ingredients Grid */
+.ingredients-grid {
+    display: grid;
+    grid-template-columns: 1fr 1fr;
+    gap: 12px;
+    background: white;
+    padding: 16px;
+    border-radius: 0 0 16px 16px;
+    box-shadow: 0 10px 40px rgba(0, 0, 0, 0.2);
+}
+
+/* Ingredient Cards */
+.ingredient-card {
+    background: #f7fafc;
+    border: 2px solid #e2e8f0;
+    border-radius: 12px;
+    padding: 20px 16px;
+    cursor: pointer;
+    transition: all 0.2s;
+    position: relative;
+    min-height: 80px;
+    display: flex;
+    flex-direction: column;
+    justify-content: center;
+    align-items: center;
+    text-align: center;
+}
+
+.ingredient-card:active {
+    transform: scale(0.97);
+}
+
+.ingredient-name {
+    font-size: 15px;
+    font-weight: 600;
+    color: #2d3748;
+    margin-bottom: 8px;
+}
+
+.status-indicator {
+    display: flex;
+    align-items: center;
+    gap: 6px;
+    font-size: 13px;
+    color: #718096;
+}
+
+.status-dot {
+    width: 10px;
+    height: 10px;
+    border-radius: 50%;
+    background: #48bb78;
+}
+
+.status-dot.half {
+    background: #ecc94b;
+}
+
+.status-dot.low {
+    background: #ed8936;
+}
+
+.status-dot.empty {
+    background: #f56565;
+}
+
+/* Kitchen Grid - Colored Borders */
+.kitchen-grid .ingredient-card {
+    cursor: default;
+    border-width: 3px;
+}
+
+.kitchen-grid .ingredient-card.status-normal {
+    border-color: #48bb78;
+    background: #f0fff4;
+}
+
+.kitchen-grid .ingredient-card.status-half {
+    border-color: #ecc94b;
+    background: #fffff0;
+}
+
+.kitchen-grid .ingredient-card.status-low {
+    border-color: #ed8936;
+    background: #fffaf0;
+}
+
+.kitchen-grid .ingredient-card.status-empty {
+    border-color: #f56565;
+    background: #fff5f5;
+}
+
+.prepped-btn {
+    margin-top: 12px;
+    padding: 10px 20px;
+    background: #667eea;
+    color: white;
+    border: none;
+    border-radius: 8px;
+    font-size: 14px;
+    font-weight: 600;
+    cursor: pointer;
+    transition: all 0.2s;
+    width: 100%;
+}
+
+.prepped-btn:active {
+    transform: scale(0.95);
+    background: #5568d3;
+}
+
+/* Modal */
+.modal {
+    display: none;
+    position: fixed;
+    top: 0;
+    left: 0;
+    width: 100%;
+    height: 100%;
+    background: rgba(0, 0, 0, 0.5);
+    z-index: 1000;
+    align-items: center;
+    justify-content: center;
+    padding: 16px;
+}
+
+.modal.show {
+    display: flex;
+}
+
+.modal-content {
+    background: white;
+    border-radius: 20px;
+    padding: 32px 24px;
+    max-width: 400px;
+    width: 100%;
+    box-shadow: 0 20px 60px rgba(0, 0, 0, 0.3);
+}
+
+.modal-content h2 {
+    text-align: center;
+    margin-bottom: 24px;
+    color: #2d3748;
+    font-size: 22px;
+}
+
+.status-buttons {
+    display: flex;
+    flex-direction: column;
+    gap: 12px;
+    margin-bottom: 16px;
+}
+
+.status-btn {
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    gap: 12px;
+    padding: 20px;
+    border: 2px solid #e2e8f0;
+    background: white;
+    border-radius: 12px;
+    font-size: 18px;
+    font-weight: 600;
+    cursor: pointer;
+    transition: all 0.2s;
+    color: #2d3748;
+}
+
+.status-btn:active {
+    transform: scale(0.97);
+}
+
+.status-btn.status-half {
+    border-color: #ecc94b;
+    background: #fffff0;
+}
+
+.status-btn.status-half:active {
+    background: #fefcbf;
+}
+
+.status-btn.status-low {
+    border-color: #ed8936;
+    background: #fffaf0;
+}
+
+.status-btn.status-low:active {
+    background: #feebc8;
+}
+
+.status-btn.status-empty {
+    border-color: #f56565;
+    background: #fff5f5;
+}
+
+.status-btn.status-empty:active {
+    background: #fed7d7;
+}
+
+.cancel-btn {
+    width: 100%;
+    padding: 16px;
+    background: #e2e8f0;
+    border: none;
+    border-radius: 12px;
+    font-size: 16px;
+    font-weight: 600;
+    color: #4a5568;
+    cursor: pointer;
+    transition: all 0.2s;
+}
+
+.cancel-btn:active {
+    transform: scale(0.97);
+    background: #cbd5e0;
+}
+
+/* Toast Notification */
+.toast {
+    position: fixed;
+    bottom: 24px;
+    left: 50%;
+    transform: translateX(-50%) translateY(100px);
+    background: #2d3748;
+    color: white;
+    padding: 16px 24px;
+    border-radius: 12px;
+    box-shadow: 0 10px 40px rgba(0, 0, 0, 0.3);
+    z-index: 2000;
+    opacity: 0;
+    transition: all 0.3s;
+    max-width: calc(100% - 32px);
+    text-align: center;
+    font-size: 15px;
+    font-weight: 500;
+}
+
+.toast.show {
+    transform: translateX(-50%) translateY(0);
+    opacity: 1;
+}
+
+.toast-undo {
+    color: #fbbf24;
+    margin-left: 8px;
+    cursor: pointer;
+    text-decoration: underline;
+}
+
+/* Responsive Adjustments */
+@media (max-width: 480px) {
+    body {
+        padding: 8px;
+    }
+    
+    .role-selection {
+        padding: 32px 20px;
+    }
+    
+    .role-selection h1 {
+        font-size: 24px;
+    }
+    
+    .ingredient-card {
+        padding: 16px 12px;
+        min-height: 70px;
+    }
+    
+    .ingredient-name {
+        font-size: 14px;
+    }
+    
+    .modal-content {
+        padding: 24px 20px;
+    }
+}

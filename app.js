@@ -1,0 +1,359 @@
+// app.js - Main Application Logic
+import { firebaseConfig } from "./firebase-config.js";
+import { initializeApp } from "https://www.gstatic.com/firebasejs/10.7.1/firebase-app.js";
+import {
+  getDatabase,
+  ref,
+  set,
+  onValue,
+  get,
+} from "https://www.gstatic.com/firebasejs/10.7.1/firebase-database.js";
+
+// Initialize Firebase
+const app = initializeApp(firebaseConfig);
+const database = getDatabase(app);
+
+// Ingredient list in exact order
+const INGREDIENTS = [
+  "White Rice",
+  "Brown Rice",
+  "Black Beans",
+  "Pinto Beans",
+  "Chicken",
+  "Queso",
+  "Steak",
+  "Carne Asada",
+  "Barbacoa",
+  "Carnitas",
+  "Fajitas",
+  "Sofritas",
+];
+
+// Status labels
+const STATUS_LABELS = {
+  normal: "Normal",
+  half: "Halfway",
+  low: "Low",
+  empty: "Empty",
+};
+
+// Optional: Audio alert for status changes
+let audioContext;
+function playAlert() {
+  try {
+    if (!audioContext) {
+      audioContext = new (window.AudioContext || window.webkitAudioContext)();
+    }
+    const oscillator = audioContext.createOscillator();
+    const gainNode = audioContext.createGain();
+    oscillator.connect(gainNode);
+    gainNode.connect(audioContext.destination);
+    oscillator.frequency.value = 800;
+    oscillator.type = "sine";
+    gainNode.gain.setValueAtTime(0.3, audioContext.currentTime);
+    gainNode.gain.exponentialRampToValueAtTime(
+      0.01,
+      audioContext.currentTime + 0.3
+    );
+    oscillator.start(audioContext.currentTime);
+    oscillator.stop(audioContext.currentTime + 0.3);
+  } catch (e) {
+    console.log("Audio not available");
+  }
+}
+
+// Initialize ingredients in Firebase if they don't exist
+async function initializeIngredients(line) {
+  const lineRef = ref(database, `lines/${line}`);
+  const snapshot = await get(lineRef);
+
+  if (!snapshot.exists()) {
+    const initialData = {};
+    INGREDIENTS.forEach((ingredient) => {
+      initialData[ingredient] = {
+        status: "normal",
+        ts: Date.now(),
+      };
+    });
+    await set(lineRef, initialData);
+  }
+}
+
+// Show toast notification
+function showToast(message, undoCallback = null) {
+  const toast = document.getElementById("toast");
+
+  if (undoCallback) {
+    const undoSpan = document.createElement("span");
+    undoSpan.className = "toast-undo";
+    undoSpan.textContent = "Undo?";
+    undoSpan.onclick = () => {
+      undoCallback();
+      toast.classList.remove("show");
+    };
+    toast.innerHTML = message + " ";
+    toast.appendChild(undoSpan);
+  } else {
+    toast.textContent = message;
+  }
+
+  toast.classList.add("show");
+
+  setTimeout(() => {
+    toast.classList.remove("show");
+  }, 3000);
+}
+
+// LINE INTERFACE
+export async function initializeLineInterface(line) {
+  await initializeIngredients(line);
+
+  const grid = document.getElementById("ingredientsGrid");
+  const modal = document.getElementById("statusModal");
+  const modalTitle = document.getElementById("modalTitle");
+  const cancelBtn = document.getElementById("cancelBtn");
+
+  let currentIngredient = null;
+  let previousStatus = null;
+
+  // Create ingredient cards
+  INGREDIENTS.forEach((ingredient) => {
+    const card = document.createElement("div");
+    card.className = "ingredient-card";
+    card.dataset.ingredient = ingredient;
+
+    card.innerHTML = `
+            <div class="ingredient-name">${ingredient}</div>
+            <div class="status-indicator">
+                <span class="status-dot"></span>
+                <span class="status-text">Normal</span>
+            </div>
+        `;
+
+    card.onclick = () => {
+      currentIngredient = ingredient;
+      modalTitle.textContent = `${ingredient} Status`;
+      modal.classList.add("show");
+    };
+
+    grid.appendChild(card);
+  });
+
+  // Modal status button handlers
+  document.querySelectorAll(".status-btn").forEach((btn) => {
+    btn.onclick = async () => {
+      const status = btn.dataset.status;
+      const ingredientRef = ref(database, `lines/${line}/${currentIngredient}`);
+
+      // Get current status for undo
+      const snapshot = await get(ingredientRef);
+      previousStatus = snapshot.val()?.status || "normal";
+
+      // Update status
+      await set(ingredientRef, {
+        status: status,
+        ts: Date.now(),
+      });
+
+      modal.classList.remove("show");
+
+      // Show toast with undo option
+      showToast(
+        `${currentIngredient} set to ${STATUS_LABELS[status].toUpperCase()}`,
+        async () => {
+          await set(ingredientRef, {
+            status: previousStatus,
+            ts: Date.now(),
+          });
+        }
+      );
+    };
+  });
+
+  // Cancel button
+  cancelBtn.onclick = () => {
+    modal.classList.remove("show");
+  };
+
+  // Close modal on background click
+  modal.onclick = (e) => {
+    if (e.target === modal) {
+      modal.classList.remove("show");
+    }
+  };
+
+  // Listen for updates from Firebase
+  INGREDIENTS.forEach((ingredient) => {
+    const ingredientRef = ref(database, `lines/${line}/${ingredient}`);
+    onValue(ingredientRef, (snapshot) => {
+      const data = snapshot.val();
+      const card = grid.querySelector(`[data-ingredient="${ingredient}"]`);
+
+      if (card && data) {
+        const dot = card.querySelector(".status-dot");
+        const text = card.querySelector(".status-text");
+        const status = data.status || "normal";
+
+        // Update dot color
+        dot.className = "status-dot";
+        if (status !== "normal") {
+          dot.classList.add(status);
+        }
+
+        // Update text
+        text.textContent = STATUS_LABELS[status];
+      }
+    });
+  });
+
+  // Listen for "prepped" confirmations from kitchen
+  const lineRef = ref(database, `lines/${line}`);
+  let isFirstLoad = true;
+  onValue(lineRef, (snapshot) => {
+    if (isFirstLoad) {
+      isFirstLoad = false;
+      return;
+    }
+
+    const data = snapshot.val();
+    if (data) {
+      Object.entries(data).forEach(([ingredient, value]) => {
+        if (value.status === "normal" && value.ts > Date.now() - 2000) {
+          showToast(`✓ ${ingredient} has been prepped!`);
+        }
+      });
+    }
+  });
+}
+
+// KITCHEN INTERFACE
+export async function initializeKitchenInterface() {
+  await initializeIngredients("main");
+  await initializeIngredients("delivery");
+
+  const grid = document.getElementById("ingredientsGrid");
+  const mainTab = document.getElementById("mainTab");
+  const deliveryTab = document.getElementById("deliveryTab");
+  const mainBadge = document.getElementById("mainBadge");
+  const deliveryBadge = document.getElementById("deliveryBadge");
+
+  let currentLine = "main";
+
+  // Create ingredient cards
+  function createCards() {
+    grid.innerHTML = "";
+    INGREDIENTS.forEach((ingredient) => {
+      const card = document.createElement("div");
+      card.className = "ingredient-card";
+      card.dataset.ingredient = ingredient;
+
+      card.innerHTML = `
+                <div class="ingredient-name">${ingredient}</div>
+                <div class="status-indicator">
+                    <span class="status-dot"></span>
+                    <span class="status-text">Normal</span>
+                </div>
+                <button class="prepped-btn">Prepped ✓</button>
+            `;
+
+      const preppedBtn = card.querySelector(".prepped-btn");
+      preppedBtn.onclick = async () => {
+        const ingredientRef = ref(
+          database,
+          `lines/${currentLine}/${ingredient}`
+        );
+        await set(ingredientRef, {
+          status: "normal",
+          ts: Date.now(),
+        });
+        showToast(`${ingredient} marked as prepped!`);
+      };
+
+      grid.appendChild(card);
+    });
+  }
+
+  createCards();
+
+  // Tab switching
+  function switchTab(line) {
+    currentLine = line;
+    mainTab.classList.toggle("active", line === "main");
+    deliveryTab.classList.toggle("active", line === "delivery");
+    updateCards();
+  }
+
+  mainTab.onclick = () => switchTab("main");
+  deliveryTab.onclick = () => switchTab("delivery");
+
+  // Update cards based on current line
+  function updateCards() {
+    INGREDIENTS.forEach((ingredient) => {
+      const ingredientRef = ref(database, `lines/${currentLine}/${ingredient}`);
+      onValue(ingredientRef, (snapshot) => {
+        const data = snapshot.val();
+        const card = grid.querySelector(`[data-ingredient="${ingredient}"]`);
+
+        if (card && data) {
+          const dot = card.querySelector(".status-dot");
+          const text = card.querySelector(".status-text");
+          const status = data.status || "normal";
+
+          // Update card styling
+          card.className = "ingredient-card";
+          card.classList.add(`status-${status}`);
+
+          // Update dot color
+          dot.className = "status-dot";
+          if (status !== "normal") {
+            dot.classList.add(status);
+          }
+
+          // Update text
+          text.textContent = STATUS_LABELS[status];
+        }
+      });
+    });
+  }
+
+  updateCards();
+
+  // Check for alerts on the other line (for badges)
+  function checkOtherLineAlerts(otherLine, badgeElement) {
+    const lineRef = ref(database, `lines/${otherLine}`);
+    onValue(lineRef, (snapshot) => {
+      const data = snapshot.val();
+      let hasAlert = false;
+
+      if (data) {
+        Object.values(data).forEach((ingredient) => {
+          if (ingredient.status === "low" || ingredient.status === "empty") {
+            hasAlert = true;
+          }
+        });
+      }
+
+      if (hasAlert) {
+        badgeElement.classList.add("show");
+        if (otherLine !== currentLine) {
+          playAlert();
+        }
+      } else {
+        badgeElement.classList.remove("show");
+      }
+    });
+  }
+
+  // Monitor both lines for cross-tab notifications
+  checkOtherLineAlerts("main", deliveryBadge);
+  checkOtherLineAlerts("delivery", mainBadge);
+
+  // Update badges when switching tabs
+  mainTab.addEventListener("click", () => {
+    mainBadge.classList.remove("show");
+  });
+
+  deliveryTab.addEventListener("click", () => {
+    deliveryBadge.classList.remove("show");
+  });
+}
