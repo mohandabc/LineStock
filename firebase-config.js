@@ -5,7 +5,7 @@
 export const firebaseConfig = {
   apiKey: "AIzaSyBge-kEGCNipoMSCtQXzIkHiW8Ua3NGNTE",
   authDomain: "linestock-35107.firebaseapp.com",
-  //   databaseURL: "https://YOUR_PROJECT_ID-default-rtdb.firebaseio.com",
+  databaseURL: "https://linestock-35107-default-rtdb.firebaseio.com/",
   projectId: "linestock-35107",
   storageBucket: "linestock-35107.firebasestorage.app",
   messagingSenderId: "937624489891",
